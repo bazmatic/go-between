@@ -1,0 +1,22 @@
+syntax = 'proto3';
+
+message User {
+    string name = 1;
+    int32 id = 2;
+}
+
+message UserNewRequest {
+    string name = 1;
+}
+
+message UserNewResponse {
+    User data = 1;
+    string error = 2;
+}
+
+message UsersAllRequest {}
+
+message UsersAllResponse {
+    repeated User data = 1;
+    string error = 2;
+}
