@@ -37,7 +37,6 @@ func main() {
 
 		logMessageReceived(m)
 		var userNewRequest = new(pb.UserNewRequest)
-		//var errMessage string
 
 		requestID, err := unmarshalRequest(m, subjects.SubjectUserCreate, userNewRequest)
 		if err != nil {
@@ -47,7 +46,6 @@ func main() {
 		//Save to DB
 		var userID int32
 		var sql = "insert into users (name) values('" + userNewRequest.Name + "') RETURNING id"
-		log.Printf("%s", sql)
 		err = db.QueryRow(sql).Scan(&userID)
 
 		if err != nil {
@@ -78,7 +76,7 @@ func main() {
 	if _, err := natsClient.Subscribe("*."+subjects.SubjectUserList, func(m *nats.Msg) {
 
 		logMessageReceived(m)
-		var usersAllRequest *pb.UsersAllRequest = new(pb.UsersAllRequest)
+		var usersAllRequest = new(pb.UsersAllRequest)
 
 		requestID, err := unmarshalRequest(m, subjects.SubjectUserList, usersAllRequest)
 		if err != nil {
