@@ -151,7 +151,7 @@ func getRequestID(subject string, parentSubject string) (requestID string) {
 }
 
 func logMessageReceived(m *nats.Msg) {
-	log.Printf("MSG IN: %s", m.Subject)
+	log.Printf("MSG IN  %s", m.Subject)
 }
 
 func logMessageSent(subject string) {
