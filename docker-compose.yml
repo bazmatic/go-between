@@ -1,0 +1,36 @@
+version: '3'
+services:
+  nats:
+    image: nats:latest
+    ports:
+      - "8222:8222"
+      - "6222:6222"
+      - "4222:4222"
+  postgresql:
+    image: postgres:10.3
+    ports: 
+      - "8080:8080"
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=docker
+      - POSTGRES_PASSWORD=docker
+      - POSTGRES_DB=between
+    volumes:
+      - ./db/data:/var/lib/postgresql/data
+  apigateway:
+    build:
+      context: .
+      dockerfile: ./api-gateway/Dockerfile
+
+    ports:
+      - "3000:3000"
+    links:
+      - nats
+  microservice:
+    build: 
+      context: .
+      dockerfile: ./microservice/Dockerfile
+    links:
+      - nats
+      - postgresql
+

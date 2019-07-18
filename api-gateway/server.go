@@ -22,7 +22,8 @@ func main() {
 
 	// Start NATS connection
 	// TODO: Centralise NATS config
-	natsClient, err := nats.Connect(nats.DefaultURL)
+	//natsClient, err := nats.Connect(nats.DefaultURL)
+	natsClient, err := nats.Connect("nats://nats:4222")
 	if err != nil {
 		log.Fatal(err)
 	} else {

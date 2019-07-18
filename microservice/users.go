@@ -16,7 +16,7 @@ func main() {
 
 	// Connect to NATS
 	// TODO: Centralise NATS config
-	natsClient, err := nats.Connect(nats.DefaultURL)
+	natsClient, err := nats.Connect("nats://nats:4222")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -24,7 +24,7 @@ func main() {
 	log.Printf("Connected to NAT")
 
 	// Connect to DB
-	connStr := "dbname=between sslmode=disable"
+	connStr := "host=postgresql dbname=between sslmode=disable user=docker password=docker"
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		log.Fatal(err)
