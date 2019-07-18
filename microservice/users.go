@@ -2,11 +2,13 @@ package main
 
 import (
 	//"errors"
-	pb "../proto"
-	subjects "../protocol"
-	proto "github.com/gogo/protobuf/proto"
+	pb "github.com/bazmatic/go-between/proto"
+	subjects "github.com/bazmatic/go-between/protocol"
+	//proto "github.com/gogo/protobuf/proto"
+	"database/sql"
+	proto "github.com/golang/protobuf/proto"
+	_ "github.com/lib/pq"
 	"github.com/nats-io/nats"
-	"go.mongodb.org/mongo-driver/mongo"
 	"log"
 	"strings"
 )
@@ -22,15 +24,13 @@ func main() {
 	defer natsClient.Close()
 	log.Printf("Connected to NAT")
 
-	// Connect to MongoDB
-	dbClient, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017"))
+	// Connect to DB
+	connStr := "dbname=between sslmode=disable"
+	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		log.Fatal(err)
 	}
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	err = client.Connect(ctx)
-	defer dbClient.Close()
-	log.Printf("Connected to MongoDB")
+	log.Printf("Connected to DB")
 
 	//=== Subscriptions
 	if _, err := natsClient.Subscribe("*."+subjects.SubjectUserCreate, func(m *nats.Msg) {
@@ -45,12 +45,21 @@ func main() {
 		}
 
 		//TODO: Save to DB
+		var userID int32
+		var sql = "insert into users (name) values('" + userNewRequest.Name + "') RETURNING id"
+		log.Printf("%s", sql)
+		err = db.QueryRow(sql).Scan(&userID)
+
+		if err != nil {
+			log.Fatal(err)
+			panic(err)
+		}
 
 		userNewResponse := pb.UserNewResponse{
 			Error: errMessage,
 			Data: &pb.User{
 				Name: userNewRequest.Name,
-				Id:   33,
+				Id:   userID,
 			},
 		}
 
