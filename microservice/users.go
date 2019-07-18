@@ -23,20 +23,15 @@ func main() {
 
 	//=== Subscriptions
 	if _, err := natsClient.Subscribe("*."+subjects.SubjectUserCreate, func(m *nats.Msg) {
+
 		logMessageReceived(m)
 		var userNewRequest *pb.UserNewRequest = new(pb.UserNewRequest)
 		var errMessage string
-		err = proto.Unmarshal(m.Data, userNewRequest)
-		if err != nil {
-			errMessage = err.Error()
-		}
 
-		// Get request ID
-		parts := strings.Split(m.Subject, "."+subjects.SubjectUserCreate)
-		if len(parts) != 2 {
-			panic("Invalid subject")
+		requestID, err := unmarshalRequest(m, userNewRequest)
+		if err != nil {
+			panic(err)
 		}
-		requestID := parts[0]
 
 		userNewResponse := pb.UserNewResponse{
 			Error: errMessage,
@@ -45,8 +40,12 @@ func main() {
 				Id:   33,
 			},
 		}
-		marshalledMessage, _ := proto.Marshal(&userNewResponse)
-		resSubject := requestID + "." + subjects.SubjectUserCreateCompleted
+
+		marshalledMessage, resSubject, err := marshalResponse(&userNewResponse, requestID, subjects.SubjectUserCreateCompleted)
+		if err != nil {
+			panic(err)
+		}
+
 		natsClient.Publish(resSubject, marshalledMessage)
 		logMessageSent(resSubject)
 
@@ -56,6 +55,29 @@ func main() {
 
 	// Wait forever
 	select {}
+}
+
+//Unmarshal the request and return the attached requestID
+func unmarshalRequest(m *nats.Msg, pbMessage proto.Message) (requestID string, err error) {
+	err = proto.Unmarshal(m.Data, pbMessage)
+	requestID = getRequestID(m.Subject, subjects.SubjectUserCreate)
+	return
+}
+
+func marshalResponse(pbMessage proto.Message, requestID string, parentSubject string) (marshalledMessage []byte, subject string, err error) {
+	marshalledMessage, err = proto.Marshal(pbMessage)
+	subject = requestID + "." + subjects.SubjectUserCreateCompleted
+	return
+}
+
+func getRequestID(subject string, parentSubject string) (requestID string) {
+	// Get request ID from subject
+	parts := strings.Split(subject, "."+parentSubject)
+	if len(parts) != 2 {
+		panic("Invalid subject")
+	}
+	requestID = parts[0]
+	return
 }
 
 func logMessageReceived(m *nats.Msg) {
