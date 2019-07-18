@@ -2,10 +2,9 @@ package main
 
 import (
 	//"errors"
+	"database/sql"
 	pb "github.com/bazmatic/go-between/proto"
 	subjects "github.com/bazmatic/go-between/protocol"
-	//proto "github.com/gogo/protobuf/proto"
-	"database/sql"
 	proto "github.com/golang/protobuf/proto"
 	_ "github.com/lib/pq"
 	"github.com/nats-io/nats"
@@ -37,7 +36,7 @@ func main() {
 	if _, err := natsClient.Subscribe("*."+subjects.SubjectUserCreate, func(m *nats.Msg) {
 
 		logMessageReceived(m)
-		var userNewRequest *pb.UserNewRequest = new(pb.UserNewRequest)
+		var userNewRequest = new(pb.UserNewRequest)
 		//var errMessage string
 
 		requestID, err := unmarshalRequest(m, subjects.SubjectUserCreate, userNewRequest)
@@ -57,7 +56,6 @@ func main() {
 		}
 
 		userNewResponse := pb.UserNewResponse{
-			//Error: err,
 			Data: &pb.User{
 				Name: userNewRequest.Name,
 				Id:   userID,
@@ -106,7 +104,6 @@ func main() {
 			if err := rows.Scan(&id, &name); err != nil {
 				log.Fatal(err)
 			}
-			log.Printf("id: %d name: %s", id, name)
 			userAllResponse.Data = append(
 				userAllResponse.Data,
 				&pb.User{
