@@ -35,11 +35,21 @@ func main() {
 
 	// POST users
 	e.POST(APIPrefix+"users", func(context echo.Context) error {
+		defer func() {
+			if recoveredErr := recover(); recoveredErr != nil {
+				echo.NewHTTPError(http.StatusInternalServerError, recoveredErr)
+			}
+		}()
 		return reqUserPost(context, e, natsClient)
 	})
 
 	// GET users
 	e.GET(APIPrefix+"users", func(context echo.Context) error {
+		defer func() {
+			if recoveredErr := recover(); recoveredErr != nil {
+				echo.NewHTTPError(http.StatusInternalServerError, recoveredErr)
+			}
+		}()
 		return errors.New("Not implemented")
 	})
 
@@ -48,53 +58,23 @@ func main() {
 
 }
 
-/*func subscribe(nc *nats.Conn) {
-	if _, err := nc.Subscribe(subjects.SubjectUserCreateCompleted, func(m *nats.Msg) {
-		log.Printf("MESSSGE RCVD: %s: %s", m.Subject, m.Data)
-	}); err != nil {
-		log.Fatal(err)
-	}
-}
-*/
-
 func reqUserPost(context echo.Context, e *echo.Echo, natsClient *nats.Conn) error {
+
 	userNew := new(pb.UserNewRequest)
 	err := context.Bind(userNew)
 	if err != nil {
-		e.Logger.Error(err)
-		return err
+		panic(err)
 	} else {
-
 		marshalledMessage, err := proto.Marshal(userNew)
 		if err != nil {
-			e.Logger.Error(err)
-			return err
+			panic(err)
 		}
-		/*
-			requestID := rand.Intn(100000)
-			natsClient.Publish(subjects.SubjectUserCreate+"."+strconv.Itoa(requestID), marshalledMessage)
-			subcriber, err := natsClient.SubscribeSync(subjects.SubjectUserCreateCompleted + "." + strconv.Itoa(requestID))
-
-			if err != nil {
-				e.Logger.Error(err)
-				return err
-			}
-			natsClient.Flush()
-			log.Printf("Sent message to NATS")
-
-			// Wait for response
-			msg, err := subcriber.NextMsg(10 * time.Second)
-			if err != nil {
-				e.Logger.Error(err)
-				return err
-			}*/
 
 		msg := awaitRequest(subjects.SubjectUserCreate, subjects.SubjectUserCreateCompleted, marshalledMessage, natsClient)
 
 		// Use the response
 		var userNewResponse *pb.UserNewResponse = new(pb.UserNewResponse)
 		err = proto.Unmarshal(msg.Data, userNewResponse)
-		log.Printf("Reply: %s", msg.Data)
 
 		return context.JSON(http.StatusOK, userNewResponse)
 	}
