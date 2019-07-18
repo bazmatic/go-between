@@ -38,10 +38,10 @@ In root folder:
 `make build`
 
 ## API gateway
-`go run /api-gateway/server.go`
+`go run ./api-gateway/server.go`
 
 ## Microservice
-`go run /microservice/user.go`
+`go run ./microservice/user.go`
 
 
 
