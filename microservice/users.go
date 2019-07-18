@@ -6,20 +6,31 @@ import (
 	subjects "../protocol"
 	proto "github.com/gogo/protobuf/proto"
 	"github.com/nats-io/nats"
+	"go.mongodb.org/mongo-driver/mongo"
 	"log"
 	"strings"
 )
 
 func main() {
 
-	// Start NATS connection
+	// Connect to NATS
 	// TODO: Centralise NATS config
 	natsClient, err := nats.Connect(nats.DefaultURL)
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("Microservice started")
 	defer natsClient.Close()
+	log.Printf("Connected to NAT")
+
+	// Connect to MongoDB
+	dbClient, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	err = client.Connect(ctx)
+	defer dbClient.Close()
+	log.Printf("Connected to MongoDB")
 
 	//=== Subscriptions
 	if _, err := natsClient.Subscribe("*."+subjects.SubjectUserCreate, func(m *nats.Msg) {
@@ -32,6 +43,8 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+
+		//TODO: Save to DB
 
 		userNewResponse := pb.UserNewResponse{
 			Error: errMessage,
@@ -52,6 +65,8 @@ func main() {
 	}); err != nil {
 		log.Fatal(err)
 	}
+
+	log.Printf("Microservice ready")
 
 	// Wait forever
 	select {}
