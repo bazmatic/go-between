@@ -33,18 +33,19 @@ func main() {
 	log.Printf("Connected to DB")
 
 	//=== Subscriptions
+	//user.create
 	if _, err := natsClient.Subscribe("*."+subjects.SubjectUserCreate, func(m *nats.Msg) {
 
 		logMessageReceived(m)
 		var userNewRequest *pb.UserNewRequest = new(pb.UserNewRequest)
-		var errMessage string
+		//var errMessage string
 
-		requestID, err := unmarshalRequest(m, userNewRequest)
+		requestID, err := unmarshalRequest(m, subjects.SubjectUserCreate, userNewRequest)
 		if err != nil {
 			panic(err)
 		}
 
-		//TODO: Save to DB
+		//Save to DB
 		var userID int32
 		var sql = "insert into users (name) values('" + userNewRequest.Name + "') RETURNING id"
 		log.Printf("%s", sql)
@@ -56,7 +57,7 @@ func main() {
 		}
 
 		userNewResponse := pb.UserNewResponse{
-			Error: errMessage,
+			//Error: err,
 			Data: &pb.User{
 				Name: userNewRequest.Name,
 				Id:   userID,
@@ -75,6 +76,56 @@ func main() {
 		log.Fatal(err)
 	}
 
+	//user.list
+	if _, err := natsClient.Subscribe("*."+subjects.SubjectUserList, func(m *nats.Msg) {
+
+		logMessageReceived(m)
+		var usersAllRequest *pb.UsersAllRequest = new(pb.UsersAllRequest)
+
+		requestID, err := unmarshalRequest(m, subjects.SubjectUserList, usersAllRequest)
+		if err != nil {
+			panic(err)
+		}
+
+		rows, err := db.Query("select * from users")
+		if err != nil {
+			panic(err)
+		}
+		defer rows.Close()
+
+		userAllResponse := pb.UsersAllResponse{
+			//Error: err,
+			Data: make([]*pb.User, 0),
+		}
+
+		for rows.Next() {
+			var (
+				id   int32
+				name string
+			)
+			if err := rows.Scan(&id, &name); err != nil {
+				log.Fatal(err)
+			}
+			log.Printf("id: %d name: %s", id, name)
+			userAllResponse.Data = append(
+				userAllResponse.Data,
+				&pb.User{
+					Name: name,
+					Id:   id,
+				},
+			)
+		}
+		marshalledMessage, resSubject, err := marshalResponse(&userAllResponse, requestID, subjects.SubjectUserListCompleted)
+		if err != nil {
+			panic(err)
+		}
+		natsClient.Publish(resSubject, marshalledMessage)
+		logMessageSent(resSubject)
+
+	}); err != nil {
+		log.Fatal(err)
+	}
+
 	log.Printf("Microservice ready")
 
 	// Wait forever
@@ -82,15 +133,15 @@ func main() {
 }
 
 //Unmarshal the request and return the attached requestID
-func unmarshalRequest(m *nats.Msg, pbMessage proto.Message) (requestID string, err error) {
+func unmarshalRequest(m *nats.Msg, parentSubject string, pbMessage proto.Message) (requestID string, err error) {
 	err = proto.Unmarshal(m.Data, pbMessage)
-	requestID = getRequestID(m.Subject, subjects.SubjectUserCreate)
+	requestID = getRequestID(m.Subject, parentSubject)
 	return
 }
 
 func marshalResponse(pbMessage proto.Message, requestID string, parentSubject string) (marshalledMessage []byte, subject string, err error) {
 	marshalledMessage, err = proto.Marshal(pbMessage)
-	subject = requestID + "." + subjects.SubjectUserCreateCompleted
+	subject = requestID + "." + parentSubject
 	return
 }
 

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"errors"
+	//"errors"
 	"log"
 	"math/rand"
 	"net/http"
@@ -12,8 +12,8 @@ import (
 	"github.com/labstack/echo"
 	"github.com/nats-io/nats"
 
-	pb "../proto"
-	subjects "../protocol"
+	pb "github.com/bazmatic/go-between/proto"
+	subjects "github.com/bazmatic/go-between/protocol"
 )
 
 func main() {
@@ -40,7 +40,7 @@ func main() {
 				echo.NewHTTPError(http.StatusInternalServerError, recoveredErr)
 			}
 		}()
-		return reqUserPost(context, e, natsClient)
+		return reqUsersPost(context, e, natsClient)
 	})
 
 	// GET users
@@ -50,7 +50,7 @@ func main() {
 				echo.NewHTTPError(http.StatusInternalServerError, recoveredErr)
 			}
 		}()
-		return errors.New("Not implemented")
+		return reqUsersGet(context, e, natsClient)
 	})
 
 	//=== Start web server
@@ -58,7 +58,7 @@ func main() {
 
 }
 
-func reqUserPost(context echo.Context, e *echo.Echo, natsClient *nats.Conn) error {
+func reqUsersPost(context echo.Context, e *echo.Echo, natsClient *nats.Conn) error {
 
 	userNew := new(pb.UserNewRequest)
 	err := context.Bind(userNew)
@@ -77,6 +77,28 @@ func reqUserPost(context echo.Context, e *echo.Echo, natsClient *nats.Conn) erro
 		err = proto.Unmarshal(msg.Data, userNewResponse)
 
 		return context.JSON(http.StatusOK, userNewResponse)
+	}
+}
+
+func reqUsersGet(context echo.Context, e *echo.Echo, natsClient *nats.Conn) error {
+
+	usersAll := new(pb.UsersAllRequest)
+	err := context.Bind(usersAll)
+	if err != nil {
+		panic(err)
+	} else {
+		marshalledMessage, err := proto.Marshal(usersAll)
+		if err != nil {
+			panic(err)
+		}
+
+		msg := awaitRequest(subjects.SubjectUserList, subjects.SubjectUserListCompleted, marshalledMessage, natsClient)
+
+		// Use the response
+		var usersAllResponse *pb.UsersAllResponse = new(pb.UsersAllResponse)
+		err = proto.Unmarshal(msg.Data, usersAllResponse)
+
+		return context.JSON(http.StatusOK, usersAllResponse)
 	}
 }
 
