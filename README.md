@@ -11,7 +11,10 @@ Experiment with Go, Echo, NATS and microservices
 
 Once the environment is running for the first time, initialise the database:
 
-`./db/init.sh`
+```
+cd db
+./init.sh
+```
 
 
 
